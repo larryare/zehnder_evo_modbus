@@ -1,0 +1,72 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Zehnder EVO Connect ModBus",
+        "description": "Choose how Home Assistant connects to the EVO Connect ModBus bridge over RS485.",
+        "data": {
+          "connection_type": "Connection type"
+        }
+      },
+      "serial": {
+        "title": "Serial connection",
+        "description": "Settings for the USB/serial RS485 adapter connected to the Home Assistant host.",
+        "data": {
+          "serial_port": "Serial port (e.g. /dev/ttyUSB0 or COM3)",
+          "baudrate": "Baud rate",
+          "parity": "Parity",
+          "stopbits": "Stop bits",
+          "bytesize": "Data bits",
+          "slave_id": "Modbus slave address (usually 1)"
+        }
+      },
+      "tcp": {
+        "title": "Network connection",
+        "description": "Settings for a WiFi/Ethernet RS485 gateway. Most gateways use RTU over TCP.",
+        "data": {
+          "host": "Host or IP address",
+          "tcp_port": "Port",
+          "framing": "Protocol framing",
+          "slave_id": "Modbus slave address (usually 1)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Failed to connect. Check the cabling, connection settings and the slave address."
+    },
+    "abort": {
+      "already_configured": "This bridge is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Zehnder EVO Connect ModBus options",
+        "data": {
+          "scan_interval": "Update interval (seconds)",
+          "filter_scan_interval": "Filter register poll interval (seconds)",
+          "word_order": "Float word order"
+        }
+      }
+    }
+  },
+  "entity": {
+    "fan": {
+      "ventilation": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "off": "Off",
+              "away": "Away",
+              "low": "Low",
+              "medium": "Medium",
+              "high": "High",
+              "auto": "Auto",
+              "boost": "Boost"
+            }
+          }
+        }
+      }
+    }
+  }
+}

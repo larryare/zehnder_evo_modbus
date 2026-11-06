@@ -1,0 +1,72 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Zehnder EVO Connect ModBus",
+        "description": "Pasirinkite, kaip Home Assistant jungiasi prie EVO Connect ModBus tilto per RS485.",
+        "data": {
+          "connection_type": "Ryšio tipas"
+        }
+      },
+      "serial": {
+        "title": "Nuoseklusis ryšys",
+        "description": "USB/nuosekliojo RS485 adapterio, prijungto prie Home Assistant serverio, nustatymai.",
+        "data": {
+          "serial_port": "Nuoseklusis prievadas (pvz. /dev/ttyUSB0 arba COM3)",
+          "baudrate": "Pristymo sparta (baud)",
+          "parity": "Lyginumo bitas",
+          "stopbits": "Sustojimo bitai",
+          "bytesize": "Duomenų bitai",
+          "slave_id": "Modbus prietaiso adresas (paprastai 1)"
+        }
+      },
+      "tcp": {
+        "title": "Tinklo ryšys",
+        "description": "WiFi/Ethernet RS485 šliuzo nustatymai. Dauguma šliuzų naudoja RTU over TCP.",
+        "data": {
+          "host": "Pagrindinio kompiuterio adresas (IP)",
+          "tcp_port": "Prievadas",
+          "framing": "Protokolo rėmavimas",
+          "slave_id": "Modbus prietaiso adresas (paprastai 1)"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nepavyko prisijungti. Patikrinkite laidus, ryšio nustatymus ir prietaiso adresą."
+    },
+    "abort": {
+      "already_configured": "Šis tiltas jau sukonfigūruotas."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Zehnder EVO Connect ModBus nustatymai",
+        "data": {
+          "scan_interval": "Atnaujinimo intervalas (sekundės)",
+          "filter_scan_interval": "Filtro registro skaitymo intervalas (sekundės)",
+          "word_order": "Float žodžių tvarka"
+        }
+      }
+    }
+  },
+  "entity": {
+    "fan": {
+      "ventilation": {
+        "state_attributes": {
+          "preset_mode": {
+            "state": {
+              "off": "Išjungta",
+              "away": "Išvykęs",
+              "low": "Žemas",
+              "medium": "Vidutinis",
+              "high": "Aukštas",
+              "auto": "Automatinis",
+              "boost": "Vėdinimo stiprinimas"
+            }
+          }
+        }
+      }
+    }
+  }
+}

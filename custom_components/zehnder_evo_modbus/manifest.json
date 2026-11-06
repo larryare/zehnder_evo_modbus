@@ -1,0 +1,13 @@
+{
+  "domain": "zehnder_evo_modbus",
+  "name": "Zehnder EVO Connect ModBus",
+  "codeowners": ["@lkere"],
+  "config_flow": true,
+  "documentation": "https://github.com/lkere/zehnder_evo_modbus",
+  "integration_type": "device",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/lkere/zehnder_evo_modbus/issues",
+  "loggers": ["pymodbus"],
+  "requirements": ["pymodbus>=3.6.0,<4.0.0"],
+  "version": "0.1.0"
+}
