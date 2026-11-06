@@ -1,5 +1,9 @@
 # Zehnder EVO Connect ModBus for Home Assistant
 
+<p align="center">
+  <img src="brand/icon@2x.png" alt="Zehnder EVO Connect ModBus icon" width="128" />
+</p>
+
 [![Open your Home Assistant instance and open a repository in the Marketplace.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=larryare&repository=zehnder_evo_modbus&category=integration)
 
 Custom Home Assistant integration for the **Zehnder EVO Connect ModBus** bridge,
