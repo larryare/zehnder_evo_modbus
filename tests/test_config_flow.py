@@ -1,5 +1,6 @@
 """Tests for the config flow (serial and TCP paths)."""
 
+from contextlib import contextmanager
 from unittest.mock import patch
 
 from homeassistant import config_entries
@@ -46,6 +47,23 @@ class FakeFailingClient(FakeValidatingClient):
         return False
 
 
+@contextmanager
+def _patched_client(cls=FakeValidatingClient):
+    """Patch the client class in the config flow AND the setup path.
+
+    The setup path (package __init__) runs after the entry is created, and
+    must not try to open real sockets in the test sandbox.
+    """
+    with (
+        patch(
+            "custom_components.zehnder_evo_modbus.config_flow.ZehnderModbusClient",
+            cls,
+        ),
+        patch("custom_components.zehnder_evo_modbus.ZehnderModbusClient", cls),
+    ):
+        yield
+
+
 async def test_user_flow_picks_serial(hass, enable_custom_integrations):
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -64,10 +82,7 @@ async def test_full_serial_flow(hass, enable_custom_integrations):
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "serial"
 
-    with patch(
-        "custom_components.zehnder_evo_modbus.config_flow.ZehnderModbusClient",
-        FakeValidatingClient,
-    ):
+    with _patched_client():
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {
@@ -84,6 +99,7 @@ async def test_full_serial_flow(hass, enable_custom_integrations):
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_SERIAL_PORT] == "/dev/ttyUSB0"
     assert result["data"][CONF_SLAVE_ID] == 1
+    assert result["title"] == "Zehnder EVO (/dev/ttyUSB0)"
 
 
 async def test_serial_flow_connection_error(hass, enable_custom_integrations):
@@ -94,10 +110,7 @@ async def test_serial_flow_connection_error(hass, enable_custom_integrations):
         result["flow_id"], {CONF_CONNECTION_TYPE: CONF_SERIAL}
     )
 
-    with patch(
-        "custom_components.zehnder_evo_modbus.config_flow.ZehnderModbusClient",
-        FakeFailingClient,
-    ):
+    with _patched_client(FakeFailingClient):
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {
@@ -124,10 +137,7 @@ async def test_full_tcp_flow(hass, enable_custom_integrations):
     )
     assert result["step_id"] == "tcp"
 
-    with patch(
-        "custom_components.zehnder_evo_modbus.config_flow.ZehnderModbusClient",
-        FakeValidatingClient,
-    ):
+    with _patched_client():
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             {
@@ -141,14 +151,11 @@ async def test_full_tcp_flow(hass, enable_custom_integrations):
 
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_HOST] == "192.168.1.50"
-    assert result["title"] == "Zehnder EVO 2 (192.168.1.50)"
+    assert result["title"] == "Zehnder EVO (192.168.1.50)"
 
 
 async def test_duplicate_entry_aborts(hass, enable_custom_integrations):
-    with patch(
-        "custom_components.zehnder_evo_modbus.config_flow.ZehnderModbusClient",
-        FakeValidatingClient,
-    ):
+    with _patched_client():
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )
@@ -194,9 +201,6 @@ async def test_duplicate_entry_aborts(hass, enable_custom_integrations):
 
 
 async def test_options_flow(hass, enable_custom_integrations):
-    entry = hass.config_entries.async_entries(DOMAIN)
-    assert not entry
-
     from pytest_homeassistant_custom_component.common import MockConfigEntry
 
     mock_entry = MockConfigEntry(domain=DOMAIN, data=dict(SERIAL_CONFIG))

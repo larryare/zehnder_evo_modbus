@@ -64,7 +64,9 @@ async def test_setup_creates_device_and_entities(hass, enable_custom_integration
     from homeassistant.helpers import entity_registry as er
 
     device_registry = dr.async_get(hass)
-    device = device_registry.async_get_device(identifiers={(DOMAIN, entry.entry_id)})
+    device = device_registry.async_get_device_by_identifier(
+        (DOMAIN, entry.entry_id), entry.entry_id
+    )
     assert device is not None
     assert device.manufacturer == "Zehnder"
 
@@ -84,7 +86,7 @@ async def test_setup_creates_device_and_entities(hass, enable_custom_integration
 async def test_fan_state_and_preset(hass, enable_custom_integrations):
     await _setup(hass)
 
-    state = hass.states.get("fan.zehnder_evo_2")
+    state = hass.states.get("fan.zehnder_evo")
     assert state is not None
     assert state.state == "on"
     assert state.attributes["preset_mode"] == "medium"
@@ -94,31 +96,31 @@ async def test_fan_state_and_preset(hass, enable_custom_integrations):
 async def test_sensor_values(hass, enable_custom_integrations):
     await _setup(hass)
 
-    supply = hass.states.get("sensor.zehnder_evo_2_supply_air_temperature")
+    supply = hass.states.get("sensor.zehnder_evo_supply_air_temperature")
     assert supply is not None
     assert float(supply.state) == 18.5
 
-    airflow = hass.states.get("sensor.zehnder_evo_2_supply_airflow")
+    airflow = hass.states.get("sensor.zehnder_evo_supply_airflow")
     assert airflow is not None
     assert float(airflow.state) == 120.0
     assert airflow.attributes["unit_of_measurement"] == "m³/h"
 
-    humidity = hass.states.get("sensor.zehnder_evo_2_outdoor_humidity")
+    humidity = hass.states.get("sensor.zehnder_evo_outdoor_humidity")
     # 0xEF sentinel -> unknown
     assert humidity.state == "unknown"
 
-    co2 = hass.states.get("sensor.zehnder_evo_2_co2_level")
+    co2 = hass.states.get("sensor.zehnder_evo_co2_level")
     assert float(co2.state) == 650.0
 
 
 async def test_binary_sensors(hass, enable_custom_integrations):
     await _setup(hass)
 
-    dirty = hass.states.get("binary_sensor.zehnder_evo_2_dirty_filter")
+    dirty = hass.states.get("binary_sensor.zehnder_evo_dirty_filter")
     assert dirty is not None
     assert dirty.state == "off"
 
-    rf = hass.states.get("binary_sensor.zehnder_evo_2_rf_communication_lost")
+    rf = hass.states.get("binary_sensor.zehnder_evo_rf_communication_lost")
     assert rf is not None
     assert rf.state == "off"
 
@@ -126,12 +128,11 @@ async def test_binary_sensors(hass, enable_custom_integrations):
 async def test_number_values_and_write(hass, enable_custom_integrations):
     await _setup(hass)
 
-    number = hass.states.get("number.zehnder_evo_2_speed_2_supply_airflow")
+    number = hass.states.get("number.zehnder_evo_speed_2_supply_airflow")
     assert number is not None
     assert float(number.state) == 70.0
 
     client = FakeSetupClient.instances[-1]
-
 
     entity_components = hass.data["entity_components"]
     number_platform = entity_components.get("number")

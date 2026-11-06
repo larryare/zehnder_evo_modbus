@@ -5,7 +5,7 @@ from enum import StrEnum
 DOMAIN = "zehnder_evo_modbus"
 MANUFACTURER = "Zehnder"
 MODEL = "EVO Connect ModBus (EVO 2/3/4)"
-DEVICE_NAME = "Zehnder EVO 2"
+DEVICE_NAME = "Zehnder EVO"
 
 CONF_CONNECTION_TYPE = "connection_type"
 CONF_SERIAL = "serial"

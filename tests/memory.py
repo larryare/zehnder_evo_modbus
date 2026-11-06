@@ -14,7 +14,7 @@ def _float(value: float) -> list[int]:
 
 
 def build_memory() -> dict[int, int]:
-    """Return a realistic register memory map for an EVO 2 with both heaters."""
+    """Return a realistic register memory map for an EVO unit with both heaters."""
     memory: dict[int, int] = {
         # Status block 40101-40103
         100: 0,  # RF communication OK

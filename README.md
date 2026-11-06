@@ -1,8 +1,9 @@
 # Zehnder EVO Connect ModBus for Home Assistant
 
-Custom Home Assistant integration for the **Zehnder EVO Connect ModBus** bridge
-(Zehnder EVO 2 / EVO 3 / EVO 4 heat-recovery ventilation units) over **Modbus RTU
-on RS485**.
+Custom Home Assistant integration for the **Zehnder EVO Connect ModBus** bridge,
+connecting **Zehnder EVO heat-recovery ventilation units (EVO 2 / EVO 3 /
+EVO 4)** over **Modbus RTU on RS485**. The register map is identical for all
+EVO generations, so one integration works with any EVO unit.
 
 Works with:
 
@@ -28,10 +29,18 @@ as *unknown* instead of garbage.
 
 ## Installation
 
-### HACS (custom repository)
+### Marketplace (Home Assistant 2026.11+)
+
+1. **Settings → Marketplace** → ⋮ → *Custom repositories*
+2. Add `https://gitlab.com/larryare/zehnder_evo_modbus` with category *Integration*
+3. Install "Zehnder EVO Connect ModBus" — the setup dialog opens right away, no restart needed
+
+> Requires the repository to be public (or accessible with a token).
+
+### HACS (Home Assistant 2026.10 and older)
 
 1. HACS → Integrations → ⋮ → *Custom repositories*
-2. Add `https://github.com/lkere/zehnder_evo_modbus` with category *Integration*
+2. Add `https://gitlab.com/larryare/zehnder_evo_modbus` with category *Integration*
 3. Install "Zehnder EVO Connect ModBus", restart Home Assistant
 
 ### Manual
