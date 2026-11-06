@@ -5,3 +5,4 @@ __pycache__/
 .hass_cache/
 coveragetool*
 .coverage
+.ruff_cache/
