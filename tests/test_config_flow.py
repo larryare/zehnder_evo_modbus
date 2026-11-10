@@ -216,6 +216,7 @@ async def test_options_flow(hass, enable_custom_integrations):
             CONF_SCAN_INTERVAL: 30,
             "filter_scan_interval": 7200,
             CONF_WORD_ORDER: "big",
+            "addressing": "plc",
         },
     )
     await hass.async_block_till_done()

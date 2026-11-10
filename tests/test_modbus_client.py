@@ -1,6 +1,5 @@
 """Tests for the Modbus client wrapper (version compatibility shims)."""
 
-
 import pytest
 
 from custom_components.zehnder_evo_modbus import modbus_client
@@ -85,6 +84,34 @@ def _tcp_config():
     }
 
 
+def _direct_tcp_config():
+    return {**_tcp_config(), "addressing": "direct", CONF_SLAVE_ID: 1}
+
+
+async def test_direct_addressing_sends_4xxxx_numbers(monkeypatch):
+    """Direct addressing sends register 41000 as protocol address 41000."""
+    monkeypatch.setattr(
+        modbus_client, "AsyncModbusTcpClient", lambda **kw: FakePymodbusClient(**kw)
+    )
+    client = ZehnderModbusClient(_direct_tcp_config())
+    await client.async_connect()
+    await client.async_write_register(999, 5)  # internal 0-based for 41000
+    assert client._client.registers[41000] == 5
+    registers = await client.async_read_holding(999, 1)
+    assert registers == [5]
+
+
+async def test_plc_addressing_sends_offset_addresses(monkeypatch):
+    """PLC addressing (default) sends 41000 as protocol address 999."""
+    monkeypatch.setattr(
+        modbus_client, "AsyncModbusTcpClient", lambda **kw: FakePymodbusClient(**kw)
+    )
+    client = ZehnderModbusClient({**_direct_tcp_config(), "addressing": "plc"})
+    await client.async_connect()
+    await client.async_write_register(999, 5)
+    assert client._client.registers[999] == 5
+
+
 async def test_serial_client_uses_slave_kwarg(monkeypatch):
     created = {}
 
@@ -106,7 +133,9 @@ async def test_serial_client_uses_slave_kwarg(monkeypatch):
 
 async def test_client_supports_device_id_kwarg(monkeypatch):
     monkeypatch.setattr(
-        modbus_client, "AsyncModbusSerialClient", lambda **kw: FakePymodbusClientDeviceId(**kw)
+        modbus_client,
+        "AsyncModbusSerialClient",
+        lambda **kw: FakePymodbusClientDeviceId(**kw),
     )
     client = ZehnderModbusClient({**_serial_config(), CONF_SLAVE_ID: 7})
     assert await client.async_connect() is True

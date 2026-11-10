@@ -39,9 +39,7 @@ class FakeMemoryClient:
 def _make_coordinator(client, options=None):
     hass = MagicMock()
     hass.config_entries.async_get_entry.return_value = None
-    coordinator = ZehnderEvoCoordinator(
-        hass, client, "test_entry", options or {}
-    )
+    coordinator = ZehnderEvoCoordinator(hass, client, "test_entry", options or {})
     # bypass the config entry lookup dependency
     coordinator._entry_id = "test_entry"
     return coordinator
@@ -103,9 +101,7 @@ async def test_partial_failure_keeps_previous_values():
 
 async def test_filter_block_is_polled_slowly():
     client = FakeMemoryClient(build_memory())
-    coordinator = _make_coordinator(
-        client, {"filter_scan_interval": 3600}
-    )
+    coordinator = _make_coordinator(client, {"filter_scan_interval": 3600})
     await coordinator._async_update_data()
     filter_reads = [c for c in client.read_calls if c[0] == 1039]
     assert len(filter_reads) == 1  # first update reads the filter block
@@ -140,5 +136,32 @@ async def test_write_float_uses_word_order():
     coordinator.word_order = WordOrder.LITTLE
     await coordinator.async_write_float(2010, 5.0)
     # 5.0 = 0x40A00000 -> little word order writes [0x0000, 0x40A0]
+    assert client.memory[2010] == 0x0000
+    assert client.memory[2011] == 0x40A0
+
+
+async def test_write_float_falls_back_to_fc06(monkeypatch):
+    """When FC16 is rejected, the two words are written with FC06."""
+    client = FakeMemoryClient(build_memory())
+    coordinator = _make_coordinator(client)
+
+    async def fake_refresh():
+        return None
+
+    coordinator.async_request_refresh = fake_refresh
+    coordinator.word_order = WordOrder.LITTLE
+
+    fc16_calls = []
+
+    async def failing_write_registers(address, values):
+        fc16_calls.append((address, values))
+        raise ZehnderModbusError("Exception Response(112, 16, 3)")
+
+    client.async_write_registers = failing_write_registers
+
+    await coordinator.async_write_float(2010, 5.0)
+
+    assert len(fc16_calls) == 1
+    # little word order: low word first
     assert client.memory[2010] == 0x0000
     assert client.memory[2011] == 0x40A0

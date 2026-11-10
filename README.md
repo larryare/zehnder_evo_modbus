@@ -98,19 +98,33 @@ After restart: **Settings → Devices & Services → Add Integration → Zehnder
 Connect ModBus**.
 
 - *Serial*: port, baud rate, parity, stop bits, data bits, **slave address
-  (usually `1`)**
+  (usually `1`)**, register addressing
 - *Network*: host, port (default 502), framing (RTU over TCP or Modbus TCP),
-  slave address
+  slave address, register addressing
+
+**Register addressing** — how the 4xxxx register numbers are mapped to Modbus
+protocol addresses:
+
+- *PLC convention* (default): address = 4xxxx − 40001, as documented in the
+  Zehnder manual.
+- *Direct*: address = 4xxxx as-is. Some gateways and simulators serve the raw
+  4xxxx numbers instead.
+
+During setup the integration reads the sensor block (41000–41027) to verify the
+connection; if the configured addressing convention fails, the other one is
+tried automatically and the working choice is saved. The same probe
+auto-detects the float word order (see below).
 
 Options (after setup): update interval (default 10 s), filter-register poll
 interval (default 1 h — reading register 41040 triggers a slow RF query in the
-unit, so it is deliberately polled rarely), and the float word order.
+unit, so it is deliberately polled rarely), the float word order, and the
+register addressing.
 
 ### If temperatures look wrong
 
-The float word order is not documented by Zehnder. The integration defaults to
-big-endian (`A B C D`). If your temperature/airflow sensors show nonsense
-values, switch *Float word order* to *little endian word swap* in the options.
+The float word order is not documented by Zehnder. It is auto-detected during
+setup from the air temperature/airflow registers; if values still look wrong,
+switch *Float word order* manually in the options.
 
 ## Register reference
 

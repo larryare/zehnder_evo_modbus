@@ -12,6 +12,7 @@ from custom_components.zehnder_evo_modbus.registers import (
     decode_all,
     decode_float,
     decode_value,
+    detect_word_order,
     encode_float,
 )
 
@@ -129,6 +130,55 @@ def test_error_codes_cover_documented_values():
 def test_current_speed_labels_cover_documented_values():
     for value in (0, 1, 2, 3, 11, 12, 13, 21, 23, 24):
         assert value in CURRENT_SPEED_LABELS
+
+
+def test_current_to_preset_fallback_covers_labelled_speeds():
+    from custom_components.zehnder_evo_modbus.registers import CURRENT_TO_PRESET
+
+    assert CURRENT_TO_PRESET[0] == "off"
+    assert CURRENT_TO_PRESET[2] == "medium"
+    assert CURRENT_TO_PRESET[24] == "auto"
+    assert set(CURRENT_TO_PRESET) == set(CURRENT_SPEED_LABELS)
+
+
+def _encode(value: float, order: WordOrder) -> list[int]:
+    return encode_float(value, order)
+
+
+def test_detect_word_order_big():
+    block = [0] * 28
+    block[5:7] = _encode(20.0, WordOrder.BIG)
+    block[7:9] = _encode(5.0, WordOrder.BIG)
+    block[19:21] = _encode(120.0, WordOrder.BIG)
+    assert detect_word_order(block) == WordOrder.BIG
+
+
+def test_detect_word_order_little():
+    # The sensor block of a real EVO bridge (41000-41027): temperatures
+    # stored little-endian, several uint8 sensors unavailable (0xEF).
+    block = [0] * 28
+    block[5:7] = _encode(20.0, WordOrder.LITTLE)
+    block[7:9] = _encode(2.2, WordOrder.LITTLE)
+    block[9:11] = _encode(4.4, WordOrder.LITTLE)
+    block[11:13] = _encode(16.0, WordOrder.LITTLE)
+    block[19:21] = _encode(100.2, WordOrder.LITTLE)
+    block[21:23] = _encode(100.2, WordOrder.LITTLE)
+    assert detect_word_order(block) == WordOrder.LITTLE
+
+
+def test_detect_word_order_inconclusive():
+    # all-zero floats decode to 0.0 in both orders
+    assert detect_word_order([0] * 28) is None
+    # short block
+    assert detect_word_order([0] * 4) is None
+
+
+def test_detect_word_order_ignores_denormal_swapped_values():
+    # little-endian 20.0 misread as big gives a denormal ~1e-41, which
+    # must not count as a plausible big-endian reading
+    block = [0] * 28
+    block[5:7] = _encode(20.0, WordOrder.LITTLE)
+    assert detect_word_order(block) == WordOrder.LITTLE
 
 
 def test_read_blocks_are_consistent_with_register_map():

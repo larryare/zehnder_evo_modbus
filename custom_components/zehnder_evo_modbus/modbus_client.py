@@ -11,6 +11,7 @@ from pymodbus.client import AsyncModbusSerialClient, AsyncModbusTcpClient
 from pymodbus.exceptions import ModbusException
 
 from .const import (
+    CONF_ADDRESSING,
     CONF_BAUDRATE,
     CONF_BYTESIZE,
     CONF_CONNECTION_TYPE,
@@ -22,13 +23,20 @@ from .const import (
     CONF_SLAVE_ID,
     CONF_STOPBITS,
     CONF_TCP_PORT,
+    DEFAULT_ADDRESSING,
     DEFAULT_TCP_PORT,
+    Addressing,
     Framing,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 REQUEST_TIMEOUT = 10.0
+
+# Internal addresses are 0-based PLC protocol addresses (4xxxx - 40001).
+# With "direct" addressing the raw 4xxxx number is sent on the wire, i.e.
+# the internal address is shifted by +40001.
+_PLC_REGISTER_OFFSET = 40001
 
 try:
     from pymodbus import FramerType
@@ -59,6 +67,14 @@ class ZehnderModbusClient:
         self._client: Any = None
         self._id_kwarg = "slave"
         self._lock = asyncio.Lock()
+        addressing = Addressing(config.get(CONF_ADDRESSING, DEFAULT_ADDRESSING))
+        self._address_offset = (
+            _PLC_REGISTER_OFFSET if addressing == Addressing.DIRECT else 0
+        )
+
+    def _protocol_address(self, address: int) -> int:
+        """Translate an internal (0-based) address to the wire address."""
+        return address + self._address_offset
 
     # -- construction --------------------------------------------------------
 
@@ -134,7 +150,9 @@ class ZehnderModbusClient:
             if not client.connected and not await self.async_connect():
                 raise ZehnderModbusError("Not connected")
             result = await client.read_holding_registers(
-                address, count=count, **self._id_kwargs()
+                self._protocol_address(address),
+                count=count,
+                **self._id_kwargs(),
             )
         except ModbusException as err:
             raise ZehnderModbusError(str(err)) from err
@@ -150,7 +168,9 @@ class ZehnderModbusClient:
         try:
             if not client.connected and not await self.async_connect():
                 raise ZehnderModbusError("Not connected")
-            result = await client.write_register(address, value, **self._id_kwargs())
+            result = await client.write_register(
+                self._protocol_address(address), value, **self._id_kwargs()
+            )
         except ModbusException as err:
             raise ZehnderModbusError(str(err)) from err
         except (TimeoutError, OSError) as err:
@@ -165,7 +185,7 @@ class ZehnderModbusClient:
             if not client.connected and not await self.async_connect():
                 raise ZehnderModbusError("Not connected")
             result = await client.write_registers(
-                address, values, **self._id_kwargs()
+                self._protocol_address(address), values, **self._id_kwargs()
             )
         except ModbusException as err:
             raise ZehnderModbusError(str(err)) from err

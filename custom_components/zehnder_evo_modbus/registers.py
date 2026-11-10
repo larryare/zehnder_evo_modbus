@@ -158,6 +158,9 @@ READ_BLOCKS: tuple[ReadBlock, ...] = (
     ReadBlock("filter", 1039, 3, slow=True),  # 41040-41042
 )
 
+SENSOR_BLOCK_ADDRESS = 999  # 41000
+SENSOR_BLOCK_COUNT = 28  # 41000-41027
+
 
 def decode_float(regs: list[int], word_order: WordOrder) -> float | None:
     """Decode a 32-bit IEEE 754 float spread over two 16-bit registers.
@@ -180,6 +183,56 @@ def encode_float(value: float, word_order: WordOrder) -> list[int]:
     return [lo, hi] if word_order == WordOrder.LITTLE else [hi, lo]
 
 
+# Floats within these ranges and not denormal-tiny are considered plausible
+# sensor readings when auto-detecting the float word order.
+_TEMP_RANGE = (-60.0, 120.0)
+_FLOW_RANGE = (0.0, 2000.0)
+_DENORMAL_LIMIT = 1e-6
+
+
+def _float_is_plausible(
+    regs: list[int], word_order: WordOrder, value_range: tuple[float, float]
+) -> bool:
+    """Return True if regs decode to a believable number in word_order."""
+    value = decode_float(regs, word_order)
+    if value is None:
+        return False
+    if value == 0.0:
+        return True
+    low, high = value_range
+    if not low <= value <= high:
+        return False
+    # A wrong word order usually yields denormal-tiny or huge values.
+    return abs(value) > _DENORMAL_LIMIT
+
+
+def detect_word_order(sensor_block: list[int]) -> WordOrder | None:
+    """Detect the float word order from a sensor block (41000-41027).
+
+    Votes over the four air temperatures and two airflows. Returns None
+    when the data is inconclusive (e.g. all sensors unavailable or 0.0).
+    """
+    if len(sensor_block) < SENSOR_BLOCK_COUNT:
+        return None
+    float_fields = (
+        (5, _TEMP_RANGE),  # extraction temperature
+        (7, _TEMP_RANGE),  # outdoor temperature
+        (9, _TEMP_RANGE),  # discharge temperature
+        (11, _TEMP_RANGE),  # supply temperature
+        (19, _FLOW_RANGE),  # supply airflow
+        (21, _FLOW_RANGE),  # extract airflow
+    )
+    votes: dict[WordOrder, int] = {WordOrder.BIG: 0, WordOrder.LITTLE: 0}
+    for offset, value_range in float_fields:
+        regs = sensor_block[offset : offset + 2]
+        for order in (WordOrder.BIG, WordOrder.LITTLE):
+            if _float_is_plausible(regs, order, value_range):
+                votes[order] += 1
+    if votes[WordOrder.BIG] == votes[WordOrder.LITTLE]:
+        return None
+    return max(votes, key=lambda order: votes[order])
+
+
 def decode_value(
     definition: RegisterDef, regs: list[int], word_order: WordOrder
 ) -> int | float | None:
@@ -195,7 +248,9 @@ def decode_value(
     return regs[0] & 0xFFFF
 
 
-def decode_all(raw: dict[int, int], word_order: WordOrder) -> dict[str, int | float | None]:
+def decode_all(
+    raw: dict[int, int], word_order: WordOrder
+) -> dict[str, int | float | None]:
     """Decode every definition present in a raw address -> register map."""
     data: dict[str, int | float | None] = {}
     for definition in REGISTER_MAP.values():
@@ -253,6 +308,22 @@ CURRENT_SPEED_LABELS: dict[int, str] = {
     24: "auto",
 }
 TIMER_SPEEDS = frozenset({11, 12, 13})
+
+# Fallback: derive the fan preset from 41000 when 41500 is not readable
+# (some bridges answer the required-speed read with a busy/acknowledge
+# exception until it has been written at least once).
+CURRENT_TO_PRESET: dict[int, str] = {
+    0: "off",
+    1: "low",
+    2: "medium",
+    3: "high",
+    11: "low",
+    12: "medium",
+    13: "high",
+    21: "away",
+    23: "boost",
+    24: "auto",
+}
 
 # Error codes for register 41003.
 ERROR_CODES: dict[int, str] = {

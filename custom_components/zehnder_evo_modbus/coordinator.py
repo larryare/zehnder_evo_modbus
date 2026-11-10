@@ -73,12 +73,10 @@ class ZehnderEvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._slave_id = options.get(CONF_SLAVE_ID, 1)
         self.word_order: WordOrder = options.get(CONF_WORD_ORDER, DEFAULT_WORD_ORDER)
         self._filter_interval = timedelta(
-            seconds=options.get(
-                CONF_FILTER_SCAN_INTERVAL, DEFAULT_FILTER_SCAN_INTERVAL
-            )
+            seconds=options.get(CONF_FILTER_SCAN_INTERVAL, DEFAULT_FILTER_SCAN_INTERVAL)
         )
         self._raw: dict[int, int] = {}
-        self._last_filter_poll = 0.0
+        self._last_filter_poll: float | None = None
         self.capabilities: CapabilityInfo = dict(UNKNOWN_CAPABILITIES)
         self._write_lock = asyncio.Lock()
 
@@ -95,16 +93,18 @@ class ZehnderEvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         now = time.monotonic()
 
         for block in READ_BLOCKS:
-            if block.slow and (now - self._last_filter_poll) < self._filter_interval.total_seconds():
+            if block.slow and (
+                self._last_filter_poll is not None
+                and (now - self._last_filter_poll)
+                < self._filter_interval.total_seconds()
+            ):
                 continue
             try:
                 registers = await self._client.async_read_holding(
                     block.address, block.count
                 )
             except ZehnderModbusError as err:
-                _LOGGER.warning(
-                    "Error reading %s block: %s", block.name, err
-                )
+                _LOGGER.warning("Error reading %s block: %s", block.name, err)
                 continue
             for offset, value in enumerate(registers):
                 raw[block.address + offset] = value
@@ -158,9 +158,17 @@ class ZehnderEvoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         """Write a 2-register float value."""
 
         async def _call() -> None:
-            await self._client.async_write_registers(
-                address, encode_float(value, self.word_order)
-            )
+            words = encode_float(value, self.word_order)
+            try:
+                await self._client.async_write_registers(address, words)
+            except ZehnderModbusError as err:
+                # Some bridges reject FC16 for 32-bit float registers but
+                # accept the two words written individually (FC06).
+                _LOGGER.debug(
+                    "FC16 write to %s failed (%s), falling back to FC06", address, err
+                )
+                await self._client.async_write_register(address, words[0])
+                await self._client.async_write_register(address + 1, words[1])
 
         await self._async_write(_call)
 
